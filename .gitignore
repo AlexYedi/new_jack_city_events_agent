@@ -1,0 +1,29 @@
+# --- Secrets / config ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+private/
+
+# --- Logs / artifacts ---
+logs/
+*.log
+.DS_Store
+
+# --- Node ---
+node_modules/
+dist/
+build/
+.cache/
+.turbo/
+.vercel/
+.next/
+
+# --- Supabase ---
+.supabase/
+supabase/.temp/
+
+# --- Apps Script / clasp (if we use it) ---
+.clasp.json
