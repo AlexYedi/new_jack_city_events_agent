@@ -2,7 +2,6 @@
 import os
 import sys
 import time
-import json
 import logging
 from datetime import datetime, timezone
 from dotenv import load_dotenv
@@ -21,32 +20,15 @@ import processor
 import db
 import observability
 import calendar_client
-import jobs as jobs_module
 import email_builder
 import gmail_sender
 
 SEND_MODE = os.environ.get("SEND_MODE", "false").lower()
 
 
-def get_attending_companies(events: list, attending_ids: list) -> list:
-    """Extract unique company names from events the user is attending."""
-    attending_set = set(attending_ids)
-    companies = set()
-    for event in events:
-        if event.get("id") in attending_set or event.get("url") in attending_set:
-            raw = event.get("companies", "[]")
-            try:
-                parsed = json.loads(raw) if isinstance(raw, str) else raw
-                companies.update(parsed)
-            except (json.JSONDecodeError, TypeError):
-                pass
-    return list(companies)
-
-
-def build_stats(processed, jobs, email_data, duration):
+def build_stats(processed, email_data, duration):
     return {
         "events_found": len(processed),
-        "jobs_found": len(jobs),
         "email_sent": SEND_MODE == "true",
         "sources_succeeded": 1 if email_data.get("count", 0) > 0 else 0,
         "sources_failed": 1 if email_data.get("error") else 0,
@@ -97,25 +79,14 @@ def run():
                 event["is_attending"] = True
                 logger.info("Flagged as attending in-memory: %s", event.get("title"))
 
-        # 7. Scrape jobs for attending companies
-        logger.info("Step 7: Scraping jobs for attending companies...")
-        attending_companies = get_attending_companies(processed, attending_ids)
-        jobs_list = jobs_module.scrape_jobs(attending_companies)
-        logger.info("Found %d jobs", len(jobs_list))
-
-        # 8. Insert jobs to Supabase
-        logger.info("Step 8: Inserting jobs to Supabase...")
-        inserted_jobs = db.insert_jobs(jobs_list)
-        logger.info("Inserted %d jobs", inserted_jobs)
-
-        # 9. Build digest email
-        logger.info("Step 9: Building digest email...")
-        subject, html_body = email_builder.build_digest(processed, jobs_list)
+        # 7. Build digest email
+        logger.info("Step 7: Building digest email...")
+        subject, html_body = email_builder.build_digest(processed)
         logger.info("Digest subject: %s", subject)
 
-        # 10. Send email if SEND_MODE=true
+        # 8. Send email if SEND_MODE=true
         if SEND_MODE == "true":
-            logger.info("Step 10: Sending digest email...")
+            logger.info("Step 8: Sending digest email...")
             sent = gmail_sender.send_email(
                 subject=subject,
                 body=html_body,
@@ -123,12 +94,12 @@ def run():
             )
             logger.info("Email sent: %s", sent)
         else:
-            logger.info("Step 10: SEND_MODE=%s — skipping send. Subject: %s", SEND_MODE, subject)
+            logger.info("Step 8: SEND_MODE=%s — skipping send. Subject: %s", SEND_MODE, subject)
 
-        # 11. Track run stats
+        # 9. Track run stats
         duration = time.time() - start
-        stats = build_stats(processed, jobs_list, email_data, duration)
-        logger.info("Step 11: Tracking run stats: %s", stats)
+        stats = build_stats(processed, email_data, duration)
+        logger.info("Step 9: Tracking run stats: %s", stats)
 
         observability.track_run(stats)
         db.log_run(stats)

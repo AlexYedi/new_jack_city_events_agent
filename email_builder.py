@@ -114,7 +114,7 @@ def _standard_card(event: dict) -> str:
 """.strip()
 
 
-def _attending_card(event: dict, jobs: list) -> str:
+def _attending_card(event: dict) -> str:
     title = event.get("title", "Untitled")
     url = event.get("url", "#")
     date_str = _fmt_event_date(event.get("event_date"))
@@ -139,28 +139,6 @@ def _attending_card(event: dict, jobs: list) -> str:
         )
         companies_html = f'<div style="margin-top:10px"><strong style="font-size:13px">Companies:</strong><div style="margin-top:4px">{company_tags}</div></div>'
 
-    jobs_html = ""
-    if jobs:
-        job_rows = ""
-        for job in jobs:
-            role = job.get("title", "")
-            company = job.get("company", "")
-            salary = job.get("salary_range", "")
-            loc = job.get("location", "")
-            arrangement = job.get("work_arrangement", "")
-            hiring_mgr = job.get("hiring_manager", "")
-            apply_url = job.get("url", "#")
-            job_rows += f"""
-<div style="border:1px solid #e0e7ff;border-radius:6px;padding:10px 14px;margin:6px 0;background:#f5f3ff">
-  <div style="font-weight:700;font-size:13px;color:#1e1b4b">{role} @ {company}</div>
-  {f'<div style="font-size:12px;color:#6b7280;margin-top:2px">{salary}</div>' if salary else ''}
-  <div style="font-size:12px;color:#6b7280;margin-top:2px">{loc}{f' · {arrangement}' if arrangement else ''}</div>
-  {f'<div style="font-size:12px;color:#374151;margin-top:4px">Hiring manager: {hiring_mgr}</div>' if hiring_mgr else ''}
-  <a href="{apply_url}" style="color:#4f46e5;font-size:12px;font-weight:600;text-decoration:none;margin-top:6px;display:inline-block">Apply →</a>
-</div>
-""".strip()
-        jobs_html = f'<div style="margin-top:12px"><strong style="font-size:13px">Open Roles:</strong><div style="margin-top:6px">{job_rows}</div></div>'
-
     return f"""
 <div style="border:2px solid #4f46e5;border-radius:8px;padding:16px 20px;margin:8px 0;background:#fafafe">
   <div style="font-size:11px;font-weight:700;color:#4f46e5;letter-spacing:1px;margin-bottom:6px">✓ ATTENDING</div>
@@ -176,7 +154,6 @@ def _attending_card(event: dict, jobs: list) -> str:
   {f'<div style="font-size:13px;color:#374151;line-height:1.5;margin-bottom:8px">{description}</div>' if description else ''}
   {speakers_html}
   {companies_html}
-  {jobs_html}
   <a href="{url}" style="color:#4f46e5;font-size:13px;font-weight:600;text-decoration:none;margin-top:10px;display:inline-block">View event →</a>
 </div>
 """.strip()
@@ -184,12 +161,11 @@ def _attending_card(event: dict, jobs: list) -> str:
 
 # ── Main builder ──────────────────────────────────────────────────────────────
 
-def build_digest(events: list, jobs: list):
-    """Build HTML digest email from processed events and jobs.
+def build_digest(events: list):
+    """Build HTML digest email from processed events.
 
     Args:
         events: processed event list from processor.process_events()
-        jobs: job list from jobs.scrape_jobs()
 
     Returns:
         (subject, html_body) tuple
@@ -248,7 +224,7 @@ def build_digest(events: list, jobs: list):
             for event in bucket_events:
                 is_attending = event.get("is_attending", False)
                 if is_attending:
-                    cards_html += "\n" + _attending_card(event, jobs)
+                    cards_html += "\n" + _attending_card(event)
                 else:
                     cards_html += "\n" + _standard_card(event)
 

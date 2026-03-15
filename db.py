@@ -66,23 +66,6 @@ def mark_attending(event_ids: list) -> None:
     except Exception as e:
         logger.error("mark_attending failed: %s", e)
 
-def insert_jobs(jobs: list) -> int:
-    """Insert jobs to Supabase jobs table.
-
-    Returns:
-        count of rows inserted
-    """
-    if not jobs:
-        return 0
-    try:
-        client = _get_client()
-        response = client.table("jobs").insert(jobs).execute()
-        count = len(response.data) if response.data else 0
-        logger.info("Inserted %d jobs", count)
-        return count
-    except Exception as e:
-        logger.error("insert_jobs failed: %s", e)
-        return 0
 
 def get_events_for_email() -> list:
     """Fetch all events from current run, joining jobs for attended events."""
@@ -100,7 +83,6 @@ def log_run(stats: dict) -> None:
         client = _get_client()
         client.table("run_log").insert({
             "events_found": stats.get("events_found", 0),
-            "jobs_found": stats.get("jobs_found", 0),
             "email_sent": stats.get("email_sent", False),
             "notes": stats.get("notes", ""),
         }).execute()
