@@ -36,3 +36,4 @@ docs_token.json
 contacts_token.json
 __pycache__/
 *.pyc
+.claude/
