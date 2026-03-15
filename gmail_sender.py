@@ -36,7 +36,7 @@ def _get_credentials():
                 }
             }
             flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
-            creds = flow.run_local_server(port=0)
+            creds = flow.run_local_server(port=0, prompt='consent', access_type='offline')
         with open(TOKEN_FILE, "w") as f:
             f.write(creds.to_json())
         logger.info("Gmail send OAuth token saved to %s", TOKEN_FILE)
