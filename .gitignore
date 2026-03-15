@@ -27,3 +27,6 @@ supabase/.temp/
 
 # --- Apps Script / clasp (if we use it) ---
 .clasp.json
+
+# --- Gmail OAuth token ---
+gmail_read_token.json

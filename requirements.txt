@@ -1,0 +1,11 @@
+httpx
+google-genai
+supabase
+google-auth
+google-auth-oauthlib
+google-api-python-client
+apscheduler
+posthog
+python-dotenv
+beautifulsoup4
+linear-python
