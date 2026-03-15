@@ -87,8 +87,15 @@ def run():
 
         # 6. Mark attended events
         logger.info("Step 6: Marking attending events in DB...")
-        attending_ids = [e.get("id") for e in attending if e.get("id")]
+        attending_ids = [e.get("event_id") for e in attending if e.get("event_id")]
         db.mark_attending(attending_ids)
+
+        # Annotate in-memory processed list so email builder renders expanded cards
+        attended_titles = {a["matched_title"] for a in attending}
+        for event in processed:
+            if event.get("title") in attended_titles:
+                event["is_attending"] = True
+                logger.info("Flagged as attending in-memory: %s", event.get("title"))
 
         # 7. Scrape jobs for attending companies
         logger.info("Step 7: Scraping jobs for attending companies...")
@@ -103,19 +110,20 @@ def run():
 
         # 9. Build digest email
         logger.info("Step 9: Building digest email...")
-        digest = email_builder.build_digest(processed, jobs_list)
+        subject, html_body = email_builder.build_digest(processed, jobs_list)
+        logger.info("Digest subject: %s", subject)
 
         # 10. Send email if SEND_MODE=true
         if SEND_MODE == "true":
             logger.info("Step 10: Sending digest email...")
             sent = gmail_sender.send_email(
-                subject=f"AI Events Digest — {datetime.now().strftime('%b %d, %Y')}",
-                body=digest,
+                subject=subject,
+                body=html_body,
                 to="alex.e.yedi@gmail.com",
             )
             logger.info("Email sent: %s", sent)
         else:
-            logger.info("Step 10: SEND_MODE=%s — skipping email send", SEND_MODE)
+            logger.info("Step 10: SEND_MODE=%s — skipping send. Subject: %s", SEND_MODE, subject)
 
         # 11. Track run stats
         duration = time.time() - start
