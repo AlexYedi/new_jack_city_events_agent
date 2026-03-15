@@ -30,3 +30,9 @@ supabase/.temp/
 
 # --- Gmail OAuth token ---
 gmail_read_token.json
+gmail_send_token.json
+calendar_token.json
+docs_token.json
+contacts_token.json
+__pycache__/
+*.pyc
