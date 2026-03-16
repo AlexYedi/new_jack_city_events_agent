@@ -1,9 +1,34 @@
 # main.py
+import base64
 import os
+
+
+def reconstruct_tokens():
+    token_map = {
+        'GMAIL_READ_TOKEN_B64': 'gmail_read_token.json',
+        'GMAIL_SEND_TOKEN_B64': 'gmail_send_token.json',
+        'CALENDAR_TOKEN_B64': 'calendar_token.json',
+    }
+    for env_var, filename in token_map.items():
+        b64_value = os.environ.get(env_var)
+        if b64_value and not os.path.exists(filename):
+            try:
+                decoded = base64.b64decode(b64_value).decode()
+                with open(filename, 'w') as f:
+                    f.write(decoded)
+                print(f"Reconstructed {filename} from env var")
+            except Exception as e:
+                print(f"Failed to reconstruct {filename}: {e}")
+
+
+reconstruct_tokens()
+
 import sys
 import time
 import logging
+import threading
 from datetime import datetime, timezone
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -23,13 +48,31 @@ import calendar_client
 import email_builder
 import gmail_sender
 
-SEND_MODE = os.environ.get("SEND_MODE", "false").lower()
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'OK')
+
+    def log_message(self, *args):
+        pass
+
+
+def start_health_server():
+    port = int(os.environ.get('PORT', 8080))
+    server = HTTPServer(('0.0.0.0', port), HealthHandler)
+    thread = threading.Thread(target=server.serve_forever)
+    thread.daemon = True
+    thread.start()
+    logger.info("Health check server started on port %d", port)
 
 
 def build_stats(processed, email_data, duration):
+    send_mode = os.environ.get('SEND_MODE', 'false').lower()
     return {
         "events_found": len(processed),
-        "email_sent": SEND_MODE == "true",
+        "email_sent": send_mode == "true",
         "sources_succeeded": 1 if email_data.get("count", 0) > 0 else 0,
         "sources_failed": 1 if email_data.get("error") else 0,
         "run_duration_seconds": round(duration, 2),
@@ -85,7 +128,8 @@ def run():
         logger.info("Digest subject: %s", subject)
 
         # 8. Send email if SEND_MODE=true
-        if SEND_MODE == "true":
+        send_mode = os.environ.get('SEND_MODE', 'false').lower()
+        if send_mode == 'true':
             logger.info("Step 8: Sending digest email...")
             sent = gmail_sender.send_email(
                 subject=subject,
@@ -94,7 +138,7 @@ def run():
             )
             logger.info("Email sent: %s", sent)
         else:
-            logger.info("Step 8: SEND_MODE=%s — skipping send. Subject: %s", SEND_MODE, subject)
+            logger.info("Step 8: SEND_MODE=%s — skipping send. Subject: %s", send_mode, subject)
 
         # 9. Track run stats
         duration = time.time() - start
@@ -115,6 +159,8 @@ def run():
 def main():
     from apscheduler.schedulers.blocking import BlockingScheduler
     import pytz
+
+    start_health_server()
 
     scheduler = BlockingScheduler(timezone=pytz.timezone("America/New_York"))
     scheduler.add_job(run, "cron", day_of_week="sun", hour=7, minute=0)
