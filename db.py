@@ -46,7 +46,14 @@ def upsert_events(events: list) -> int:
         return 0
     try:
         client = _get_client()
-        rows = [_prepare_event_row(e) for e in events]
+        seen = {}
+        for event in events:
+            url = event.get("url")
+            if url:
+                seen[url] = event
+        deduped = list(seen.values())
+        logger.info("upsert_events: %d events after dedup (was %d)", len(deduped), len(events))
+        rows = [_prepare_event_row(e) for e in deduped]
         response = client.table("events").upsert(rows, on_conflict="url").execute()
         count = len(response.data) if response.data else 0
         logger.info("Upserted %d events", count)
