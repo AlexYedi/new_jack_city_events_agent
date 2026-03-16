@@ -9,3 +9,4 @@ posthog
 python-dotenv
 beautifulsoup4
 linear-python
+pytz

@@ -11,7 +11,11 @@ def reconstruct_tokens():
     }
     for env_var, filename in token_map.items():
         b64_value = os.environ.get(env_var)
-        if b64_value and not os.path.exists(filename):
+        if not b64_value:
+            print(f"Skipping {filename} — env var {env_var} not set")
+        elif os.path.exists(filename):
+            print(f"Skipping {filename} — already exists on disk")
+        else:
             try:
                 decoded = base64.b64decode(b64_value).decode()
                 with open(filename, 'w') as f:
