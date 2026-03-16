@@ -4,6 +4,10 @@ import os
 
 
 def reconstruct_tokens():
+    # On Railway, always overwrite from env vars to avoid stale token bugs.
+    # Locally, skip if the file already exists to preserve live credentials.
+    is_railway = os.environ.get('RAILWAY_ENVIRONMENT') is not None
+
     token_map = {
         'GMAIL_READ_TOKEN_B64': 'gmail_read_token.json',
         'GMAIL_SEND_TOKEN_B64': 'gmail_send_token.json',
@@ -11,18 +15,19 @@ def reconstruct_tokens():
     }
     for env_var, filename in token_map.items():
         b64_value = os.environ.get(env_var)
-        if not b64_value:
-            print(f"Skipping {filename} — env var {env_var} not set")
-        elif os.path.exists(filename):
-            print(f"Skipping {filename} — already exists on disk")
+        if b64_value:
+            if is_railway or not os.path.exists(filename):
+                try:
+                    decoded = base64.b64decode(b64_value).decode()
+                    with open(filename, 'w') as f:
+                        f.write(decoded)
+                    print(f"Reconstructed {filename} from env var")
+                except Exception as e:
+                    print(f"Failed to reconstruct {filename}: {e}")
+            else:
+                print(f"Skipping {filename} — already exists locally")
         else:
-            try:
-                decoded = base64.b64decode(b64_value).decode()
-                with open(filename, 'w') as f:
-                    f.write(decoded)
-                print(f"Reconstructed {filename} from env var")
-            except Exception as e:
-                print(f"Failed to reconstruct {filename}: {e}")
+            print(f"Skipping {filename} — env var {env_var} not set")
 
 
 reconstruct_tokens()
